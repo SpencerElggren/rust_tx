@@ -27,6 +27,7 @@ struct Transaction {
     client: u16,
     tx: u32,
     amount: Option<Decimal>,
+    // disputed added to track, defaults to false
     #[serde(default)]
     disputed: bool
 }

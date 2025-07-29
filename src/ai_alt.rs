@@ -20,7 +20,8 @@ enum TransactionType {
     Chargeback,
 }
 
-// strangely removed the disputed bool
+// removed the disputed value, instead creating a seperate hashmap for disputed
+// transactions
 #[derive(Debug, Deserialize, Clone)]
 struct Transaction {
     #[serde(rename = "type")]
