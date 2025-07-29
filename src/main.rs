@@ -27,6 +27,8 @@ struct Transaction {
     client: u16,
     tx: u32,
     amount: Option<Decimal>,
+    #[serde(default)]
+    disputed: bool
 }
 
 // Client account state
@@ -63,7 +65,10 @@ struct AccountOutput {
 
 struct TransactionProcessor {
     accounts: HashMap<u16, Account>,
-    transactions: HashMap<(u16, u32), Transaction>, // compound key
+    // transaction hashmap uses both client and tx id to assure both in retrieval
+    // ideally, in a production context, transactions would be retrieved through a database
+    // ie in a relational database with all tx of a client attached to the client id
+    transactions: HashMap<(u16, u32), Transaction>, 
 }
 
 impl TransactionProcessor {
@@ -105,7 +110,11 @@ impl TransactionProcessor {
     fn handle_withdrawal(&mut self, tx: Transaction) {
         let Some(amount) = tx.amount else { return };
 
-        let Some(account) = self.accounts.get_mut(&tx.client) else { return };
+        let account = self
+        .accounts
+        .entry(tx.client)
+        .or_insert_with(|| Account::new(tx.client));
+
         if account.locked || account.available < amount {
             return;
         }
@@ -117,37 +126,48 @@ impl TransactionProcessor {
     }
 
     fn handle_dispute(&mut self, tx: Transaction) {
-        let Some(referenced_tx) = self.transactions.get(&(tx.client, tx.tx)) else { return };
+        let Some(referenced_tx) = self.transactions.get_mut(&(tx.client, tx.tx)) else { return };
         let Some(amount) = referenced_tx.amount else { return };
-        let Some(account) = self.accounts.get_mut(&tx.client) else { return };
+        let account = self
+            .accounts
+            .entry(tx.client)
+            .or_insert_with(|| Account::new(tx.client));
 
-        if account.locked || account.available < amount {
+        if account.locked || referenced_tx.disputed == true {
             return;
         }
 
         account.available -= amount;
         account.held += amount;
+        referenced_tx.disputed = true;
     }
 
     fn handle_resolve(&mut self, tx: Transaction) {
-        let Some(referenced_tx) = self.transactions.get(&(tx.client, tx.tx)) else { return };
+        let Some(referenced_tx) = self.transactions.get_mut(&(tx.client, tx.tx)) else { return };
         let Some(amount) = referenced_tx.amount else { return };
-        let Some(account) = self.accounts.get_mut(&tx.client) else { return };
+        let account = self
+            .accounts
+            .entry(tx.client)
+            .or_insert_with(|| Account::new(tx.client));
 
-        if account.locked || account.held < amount {
+        if account.locked || referenced_tx.disputed == false {
             return;
         }
 
         account.held -= amount;
         account.available += amount;
+        referenced_tx.disputed = false;
     }
 
     fn handle_chargeback(&mut self, tx: Transaction) {
         let Some(referenced_tx) = self.transactions.get(&(tx.client, tx.tx)) else { return };
         let Some(amount) = referenced_tx.amount else { return };
-        let Some(account) = self.accounts.get_mut(&tx.client) else { return };
+        let account = self
+            .accounts
+            .entry(tx.client)
+            .or_insert_with(|| Account::new(tx.client));
 
-        if account.locked || account.held < amount {
+        if account.locked || referenced_tx.disputed == false {
             return;
         }
 

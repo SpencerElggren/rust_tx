@@ -8,6 +8,7 @@ use std::fs::File;
 use csv::{ReaderBuilder, WriterBuilder};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+// AI added some crates that do not exist
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -19,6 +20,7 @@ enum TransactionType {
     Chargeback,
 }
 
+// strangely removed the disputed bool
 #[derive(Debug, Deserialize, Clone)]
 struct Transaction {
     #[serde(rename = "type")]
@@ -28,8 +30,6 @@ struct Transaction {
     amount: Option<Decimal>,
 }
 
-// AI wanted to add disputed: bool
-// unnecessary as if held > 0, it is disputed
 #[derive(Debug)]
 struct Account {
     client: u16,
@@ -154,7 +154,7 @@ fn alt_main() -> io::Result<()> {
 
     // writer dependent on the previous hashmaps made within main()
     // confirms total as adding held and available, rather than relying on math
-    // done within transactions.
+    // done within transactions. There is a potential security risk here
     let mut wtr = WriterBuilder::new().from_writer(io::stdout());
     for (client, account) in accounts {
         let total = account.available + account.held;
