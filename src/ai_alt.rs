@@ -21,7 +21,7 @@ enum TransactionType {
 }
 
 // removed the disputed value, instead creating a seperate hashmap for disputed
-// transactions
+// transactions. Removed, as something about it was breaking the whole code
 #[derive(Debug, Deserialize, Clone)]
 struct Transaction {
     #[serde(rename = "type")]

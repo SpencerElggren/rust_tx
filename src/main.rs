@@ -32,7 +32,7 @@ struct Transaction {
     disputed: bool
 }
 
-// Client account state
+// Client account
 #[derive(Debug)]
 struct Account {
     client: u16,
